@@ -1,6 +1,3 @@
-# 文件名: main.py (位于 data/plugins/astrbot_plugin_proactive_chat/ 目录下)
-# 版本: v1.2.0
-
 """插件入口与主类定义。"""
 
 from __future__ import annotations
@@ -52,7 +49,7 @@ class ProactiveChatPlugin(
         self.timezone = None  # ZoneInfo 时区对象（initialize 中加载）
 
         # 使用 StarTools 获取插件专属数据目录（Path 对象）
-        self.data_dir = star.StarTools.get_data_dir("astrbot_plugin_proactive_chat")
+        self.data_dir = star.StarTools.get_data_dir("astrbot_plugin_flf_proactive_chat")
         self.session_data_file = self.data_dir / "session_data.json"
 
         # 共享锁与持久化数据容器
