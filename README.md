@@ -5,6 +5,7 @@
 - **多会话支持**:支持同时为多个私聊和群聊提供主动消息服务，分别设置专属的配置和备注名。
 - **会话完全隔离**: 每个会话拥有独立的状态、计数器、触发器，避免相互干扰。
 - **上下文感知**: 支持灵活选择上下文来源，回顾历史对话，并根据你设定的提示词，生成与之前话题相关的回复，而不是生硬的问候。
+- **日程联动**: 可读取 `astrbot_plugin_life_scheduler` 的今日穿搭和日程，让主动消息自然包含角色当天状态。
 - **完整人格支持**: 加载并应用你为当前会话设置的专属人格，确保每一次主动消息都符合人设。
 - **动态情绪**: 内置一个"未回复计数器"，你可以利用它在 Prompt 中设计不同的情绪表达，并且支持设置未回复上限。
 - **持久化会话**: 无论您是"重启 AstrBot"还是"重载插件"，都能够从文件中恢复所有未执行的主动消息任务。
@@ -12,9 +13,25 @@
 - **分段回复**: 支持将长文本回复切分为多条短消息发送，并模拟真实的打字间隔，让对话更自然。
 - **高度兼容**: 兼容其他需要对主动消息进行修饰的插件如表情包插件等。
 
-### life_scheduler_plugin 联动
+### 📅 Life Scheduler 日程联动
 
-安装此插件时务必安装 `astrbot_plugin_life_scheduler`
+如需让主动消息包含日程，请同时安装并启用 [`astrbot_plugin_life_scheduler`](https://github.com/muyouzhi6/astrbot_plugin_life_scheduler)。
+
+本插件会在生成主动消息前尝试调用该插件的 `get_life_context()` 公共方法，读取今日穿搭与日程，并注入到模型的系统提示词中。未安装、未启用或暂时读取失败时会自动跳过，不影响主动消息主流程。
+
+相关配置位于 `friend_settings.life_scheduler_settings` 和 `group_settings.life_scheduler_settings`：
+
+```json
+{
+  "life_scheduler_settings": {
+    "enable": true,
+    "plugin_name": "astrbot_plugin_life_scheduler",
+    "include_outfit": true,
+    "include_schedule": true,
+    "max_chars": 1600
+  }
+}
+```
 
 ## 📑 插件配置项详解
 

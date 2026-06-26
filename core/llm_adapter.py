@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 from datetime import datetime
 from typing import Any
@@ -154,6 +155,125 @@ class LlmMixin:
             "bot_identifiers": bot_identifiers,
             "platform_context_max_chars": max_chars,
         }
+
+    def _get_life_scheduler_settings(
+        self, session_config: dict[str, Any] | None
+    ) -> dict[str, Any]:
+        """读取 Life Scheduler 联动配置并做容错。"""
+        raw_settings = {}
+        if isinstance(session_config, dict):
+            raw_settings = session_config.get("life_scheduler_settings") or {}
+        if not isinstance(raw_settings, dict):
+            raw_settings = {}
+
+        def parse_int(value: Any, default: int, minimum: int, maximum: int) -> int:
+            try:
+                parsed = int(value)
+            except (TypeError, ValueError):
+                parsed = default
+            return max(minimum, min(maximum, parsed))
+
+        return {
+            "enable": self._parse_bool_setting(raw_settings.get("enable"), True),
+            "plugin_name": str(
+                raw_settings.get("plugin_name") or "astrbot_plugin_life_scheduler"
+            ).strip(),
+            "include_outfit": self._parse_bool_setting(
+                raw_settings.get("include_outfit"), True
+            ),
+            "include_schedule": self._parse_bool_setting(
+                raw_settings.get("include_schedule"), True
+            ),
+            "max_chars": parse_int(raw_settings.get("max_chars"), 1600, 200, 6000),
+        }
+
+    def _format_life_scheduler_context(
+        self, life_data: Any, settings: dict[str, Any]
+    ) -> str:
+        """将 Life Scheduler 的结构化数据格式化为系统提示词片段。"""
+        if not isinstance(life_data, dict):
+            return ""
+
+        lines = [
+            "<life_schedule_context>",
+            "以下是角色今天的生活状态。主动开口时应优先自然参考它，让消息与当前穿搭或日程相关，但不要机械复述；如果它与真实对话冲突，以真实对话为准。",
+        ]
+
+        meta = life_data.get("meta")
+        style = meta.get("style") if isinstance(meta, dict) else None
+        if style:
+            lines.append(f"穿搭风格: {style}")
+
+        outfit = str(life_data.get("outfit") or "").strip()
+        if settings["include_outfit"] and outfit:
+            lines.append(f"今日穿搭: {outfit}")
+
+        schedule = str(life_data.get("schedule") or "").strip()
+        if settings["include_schedule"] and schedule:
+            lines.append(f"今日日程: {schedule}")
+
+        timeline = life_data.get("timeline")
+        if isinstance(timeline, list) and timeline:
+            timeline_text = "\n".join(str(item).strip() for item in timeline if item)
+            if timeline_text:
+                lines.append(f"时间线:\n{timeline_text}")
+
+        if len(lines) <= 2:
+            return ""
+
+        lines.append("</life_schedule_context>")
+        injection = "\n".join(lines)
+
+        max_chars = settings["max_chars"]
+        if len(injection) > max_chars:
+            injection = injection[:max_chars].rstrip() + "\n...（日程上下文已截断）"
+            if not injection.endswith("</life_schedule_context>"):
+                injection += "\n</life_schedule_context>"
+
+        return injection
+
+    async def _build_life_scheduler_context_injection(
+        self, session_config: dict[str, Any] | None
+    ) -> str:
+        """从 Life Scheduler 插件读取日程上下文。"""
+        settings = self._get_life_scheduler_settings(session_config)
+        if not settings["enable"]:
+            return ""
+
+        context = getattr(self, "context", None)
+        get_registered_star = getattr(context, "get_registered_star", None)
+        if not callable(get_registered_star):
+            logger.debug("[主动消息] 当前 AstrBot 上下文不支持读取已注册插件，跳过日程注入。")
+            return ""
+
+        plugin_name = settings["plugin_name"]
+        try:
+            star_meta = get_registered_star(plugin_name)
+        except Exception as e:
+            logger.debug(f"[主动消息] 查找 Life Scheduler 插件失败，跳过日程注入: {e}")
+            return ""
+
+        if not star_meta or not getattr(star_meta, "activated", True):
+            logger.debug(f"[主动消息] 未找到已启用的 {plugin_name}，跳过日程注入。")
+            return ""
+
+        life_plugin = getattr(star_meta, "star_cls", None)
+        get_life_context = getattr(life_plugin, "get_life_context", None)
+        if not callable(get_life_context):
+            logger.debug(f"[主动消息] {plugin_name} 未提供 get_life_context，跳过日程注入。")
+            return ""
+
+        try:
+            result = get_life_context()
+            life_data = await result if inspect.isawaitable(result) else result
+        except Exception as e:
+            logger.warning(f"[主动消息] 读取 Life Scheduler 日程失败，已跳过: {e}")
+            return ""
+
+        injection = self._format_life_scheduler_context(life_data, settings)
+        if injection:
+            logger.info("[主动消息] 已注入 Life Scheduler 今日日程上下文。")
+        return injection
 
     def _parse_umo_for_platform_history(
         self, session_id: str
@@ -637,6 +757,17 @@ class LlmMixin:
                 )
                 return None
 
+            session_config = self._get_session_config(effective_session_id) or {}
+            life_scheduler_injection = await self._build_life_scheduler_context_injection(
+                session_config
+            )
+            if life_scheduler_injection:
+                original_system_prompt = (
+                    original_system_prompt.rstrip()
+                    + "\n\n"
+                    + life_scheduler_injection
+                )
+
             context_settings = self._get_context_settings(effective_session_id)
             current_unanswered_count = 0
             try:
@@ -685,10 +816,9 @@ class LlmMixin:
         """统一 LLM 调用入口，返回(生成文本, 用户提示词)。"""
         motivation_template = session_config.get("proactive_prompt", "")
         now_str = datetime.now(self.timezone).strftime("%Y年%m月%d日 %H:%M")
-        life_data = await life_scheduler_plugin.get_life_context()
         final_user_simulation_prompt = motivation_template.replace(
             "{{unanswered_count}}", str(unanswered_count)
-        ).replace("{{current_time}}", now_str) + life_data
+        ).replace("{{current_time}}", now_str)
 
         logger.debug("[主动消息] 已生成包含动机和时间的 Prompt 。")
 

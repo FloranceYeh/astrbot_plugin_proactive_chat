@@ -22,6 +22,7 @@ class SessionOverrideManager:
         "session_name",
         "proactive_prompt",
         "context_settings",
+        "life_scheduler_settings",
         "auto_trigger_settings",
         "schedule_settings",
         "segmented_reply_settings",

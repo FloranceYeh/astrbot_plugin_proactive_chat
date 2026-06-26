@@ -95,6 +95,47 @@
                     }
                 }
             },
+            "life_scheduler_settings": {
+                "description": "📅 Life Scheduler 日程联动",
+                "type": "object",
+                "items": {
+                    "enable": {
+                        "description": "✅ 启用日程上下文注入",
+                        "type": "bool",
+                        "default": true,
+                        "hint": "开启后，主动消息生成前会尝试读取 astrbot_plugin_life_scheduler 的今日穿搭和日程，并注入到模型系统提示词中。未安装或未启用该插件时会自动跳过"
+                    },
+                    "plugin_name": {
+                        "description": "Life Scheduler 插件名",
+                        "type": "string",
+                        "default": "astrbot_plugin_life_scheduler",
+                        "hint": "通常保持默认即可。只有当目标插件在 AstrBot 中注册的名称不同，才需要修改"
+                    },
+                    "include_outfit": {
+                        "description": "包含今日穿搭",
+                        "type": "bool",
+                        "default": true,
+                        "hint": "开启后会把 Life Scheduler 返回的 outfit 注入给模型"
+                    },
+                    "include_schedule": {
+                        "description": "包含今日日程",
+                        "type": "bool",
+                        "default": true,
+                        "hint": "开启后会把 Life Scheduler 返回的 schedule 注入给模型"
+                    },
+                    "max_chars": {
+                        "description": "最大注入长度",
+                        "type": "int",
+                        "default": 1600,
+                        "hint": "限制注入到系统提示词中的日程上下文最大字符数，避免日程过长挤占上下文",
+                        "slider": {
+                            "min": 200,
+                            "max": 6000,
+                            "step": 100
+                        }
+                    }
+                }
+            },
             "schedule_settings": {
                 "description": "🕒 私聊全局时间与调度设置",
                 "type": "object",
@@ -351,6 +392,47 @@
                         "type": "string",
                         "default": "bot",
                         "hint": "用于判断平台聊天流水中哪些消息属于 Bot 自己发送的内容。不同平台或适配器记录 Bot 的名字可能不一样，例如 bot、astrbot、assistant。当“是否包含 Bot 自身消息”开启或关闭时，会依赖这里的标识来正确区分 Bot 消息。"
+                    }
+                }
+            },
+            "life_scheduler_settings": {
+                "description": "📅 Life Scheduler 日程联动",
+                "type": "object",
+                "items": {
+                    "enable": {
+                        "description": "✅ 启用日程上下文注入",
+                        "type": "bool",
+                        "default": true,
+                        "hint": "开启后，主动消息生成前会尝试读取 astrbot_plugin_life_scheduler 的今日穿搭和日程，并注入到模型系统提示词中。未安装或未启用该插件时会自动跳过"
+                    },
+                    "plugin_name": {
+                        "description": "Life Scheduler 插件名",
+                        "type": "string",
+                        "default": "astrbot_plugin_life_scheduler",
+                        "hint": "通常保持默认即可。只有当目标插件在 AstrBot 中注册的名称不同，才需要修改"
+                    },
+                    "include_outfit": {
+                        "description": "包含今日穿搭",
+                        "type": "bool",
+                        "default": true,
+                        "hint": "开启后会把 Life Scheduler 返回的 outfit 注入给模型"
+                    },
+                    "include_schedule": {
+                        "description": "包含今日日程",
+                        "type": "bool",
+                        "default": true,
+                        "hint": "开启后会把 Life Scheduler 返回的 schedule 注入给模型"
+                    },
+                    "max_chars": {
+                        "description": "最大注入长度",
+                        "type": "int",
+                        "default": 1600,
+                        "hint": "限制注入到系统提示词中的日程上下文最大字符数，避免日程过长挤占上下文",
+                        "slider": {
+                            "min": 200,
+                            "max": 6000,
+                            "step": 100
+                        }
                     }
                 }
             },
