@@ -11,7 +11,10 @@
 - **免打扰时段**: 可以自由设定一个时间段，在此期间 Bot 不会主动打扰用户。
 - **分段回复**: 支持将长文本回复切分为多条短消息发送，并模拟真实的打字间隔，让对话更自然。
 - **高度兼容**: 兼容其他需要对主动消息进行修饰的插件如表情包插件等。
-- **快捷配置**: 所有核心配置都可以在 AstrBot 原生配置页中完成。快速上手，无需修改代码，也无需学习和记忆插件指令。
+
+### life_scheduler_plugin 联动
+
+安装此插件时务必安装 `astrbot_plugin_life_scheduler`
 
 ## 📑 插件配置项详解
 
@@ -72,3 +75,5 @@
 }
 ```
 
+原项目
+[DBJD-CR/astrbot_plugin_proactive_chat](https://github.com/DBJD-CR/astrbot_plugin_proactive_chat)
