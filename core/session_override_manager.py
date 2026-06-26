@@ -55,7 +55,7 @@ class SessionOverrideManager:
             else:
                 self._overrides = {}
         except Exception as e:
-            logger.warning(f"[主动消息] 读取会话差异配置失败喵，将使用空配置: {e}")
+            logger.warning(f"[主动消息] 读取会话差异配置失败，将使用空配置: {e}")
             self._overrides = {}
 
     async def _save(self) -> None:
@@ -74,7 +74,7 @@ class SessionOverrideManager:
         try:
             await asyncio.to_thread(_do_write)
         except Exception as e:
-            logger.error(f"[主动消息] 保存会话差异配置失败喵: {e}")
+            logger.error(f"[主动消息] 保存会话差异配置失败: {e}")
             try:
                 if temp_file.exists():
                     temp_file.unlink()

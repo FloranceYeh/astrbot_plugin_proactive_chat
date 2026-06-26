@@ -75,14 +75,14 @@ class EventsMixin:
         ):
             self.first_message_logged.add(normalized_session_id)
             logger.info(
-                f"[主动消息] 已记录 {self._get_session_log_str(normalized_session_id, session_config)} 的消息时间并取消自动触发喵。"
+                f"[主动消息] 已记录 {self._get_session_log_str(normalized_session_id, session_config)} 的消息时间并取消自动触发。"
             )
 
         # 未启用或配置无效则跳过
         session_config = self._get_session_config(normalized_session_id)
         if not session_config or not session_config.get("enable", False):
             logger.debug(
-                f"[主动消息] {self._get_session_log_str(session_id, session_config)} 未启用或配置无效，跳过处理喵。"
+                f"[主动消息] {self._get_session_log_str(session_id, session_config)} 未启用或配置无效，跳过处理。"
             )
             return
 
@@ -106,11 +106,11 @@ class EventsMixin:
 
         if cancelled:
             logger.info(
-                f"[主动消息] 用户已回复喵，已取消 {self._get_session_log_str(normalized_session_id, session_config)} 的主动消息任务喵。"
+                f"[主动消息] 用户已回复，已取消 {self._get_session_log_str(normalized_session_id, session_config)} 的主动消息任务。"
             )
 
         logger.info(
-            f"[主动消息] 重置 {self._get_session_log_str(normalized_session_id, session_config)} 的未回复计数器为0喵。"
+            f"[主动消息] 重置 {self._get_session_log_str(normalized_session_id, session_config)} 的未回复计数器为0。"
         )
         await self._schedule_next_chat_and_save(
             normalized_session_id, reset_counter=True
@@ -145,14 +145,14 @@ class EventsMixin:
                     event, "sender_id", None
                 )
         except Exception as e:
-            logger.debug(f"[主动消息] 获取群聊发送者ID失败喵: {e}")
+            logger.debug(f"[主动消息] 获取群聊发送者ID失败: {e}")
 
         self_id = event.get_self_id() or self.session_data.get(session_id, {}).get(
             "self_id"
         )
         if self_id and sender_id and str(sender_id) == str(self_id):
             logger.debug(
-                f"[主动消息] 检测到 {self._get_session_log_str(session_id)} 的 Bot 自身消息，跳过用户逻辑喵。"
+                f"[主动消息] 检测到 {self._get_session_log_str(session_id)} 的 Bot 自身消息，跳过用户逻辑。"
             )
             return
 
@@ -162,7 +162,7 @@ class EventsMixin:
             "last_user_time": current_time
         }
         logger.debug(
-            f"[主动消息] 记录 {self._get_session_log_str(session_id)} 的消息时间戳喵: {current_time}"
+            f"[主动消息] 记录 {self._get_session_log_str(session_id)} 的消息时间戳: {current_time}"
         )
 
         # 更新消息时间（仅插件启动后用于自动触发）
@@ -181,11 +181,11 @@ class EventsMixin:
                     "last_message_time"
                 ] = current_time
                 logger.debug(
-                    f"[主动消息] 已记录插件启动后 {self._get_session_log_str(session_id)} 的消息时间喵 -> {current_time}"
+                    f"[主动消息] 已记录插件启动后 {self._get_session_log_str(session_id)} 的消息时间 -> {current_time}"
                 )
             else:
                 logger.debug(
-                    f"[主动消息] 忽略插件启动前 {self._get_session_log_str(session_id)} 的旧消息用于自动主动消息任务喵 -> {current_time}"
+                    f"[主动消息] 忽略插件启动前 {self._get_session_log_str(session_id)} 的旧消息用于自动主动消息任务 -> {current_time}"
                 )
 
         # 取消自动触发
@@ -210,13 +210,13 @@ class EventsMixin:
         ):
             self.first_message_logged.add(normalized_session_id)
             logger.info(
-                f"[主动消息] 已记录 {self._get_session_log_str(normalized_session_id, session_config)} 的消息时间并取消自动触发喵。"
+                f"[主动消息] 已记录 {self._get_session_log_str(normalized_session_id, session_config)} 的消息时间并取消自动触发。"
             )
 
         # 未启用或配置无效则跳过
         if not session_config or not session_config.get("enable", False):
             logger.debug(
-                f"[主动消息] {self._get_session_log_str(session_id, session_config)} 未启用或配置无效，跳过处理喵。"
+                f"[主动消息] {self._get_session_log_str(session_id, session_config)} 未启用或配置无效，跳过处理。"
             )
             return
 
@@ -256,11 +256,11 @@ class EventsMixin:
 
         if cancelled:
             logger.info(
-                f"[主动消息] 群聊活跃喵，已取消 {self._get_session_log_str(normalized_session_id, session_config)} 的主动消息任务喵。"
+                f"[主动消息] 群聊活跃，已取消 {self._get_session_log_str(normalized_session_id, session_config)} 的主动消息任务。"
             )
         elif had_scheduled_task:
             logger.info(
-                f"[主动消息] 群聊活跃喵，{self._get_session_log_str(normalized_session_id, session_config)} 未找到可取消的主动消息任务（可能已被提前清理）喵。"
+                f"[主动消息] 群聊活跃，{self._get_session_log_str(normalized_session_id, session_config)} 未找到可取消的主动消息任务（可能已被提前清理）。"
             )
 
         # 重置沉默倒计时
@@ -277,7 +277,7 @@ class EventsMixin:
                 changed = True
                 if current_unanswered > 0:
                     logger.debug(
-                        f"[主动消息] {self._get_session_log_str(normalized_session_id, session_config)} 的用户已回复， 未回复计数器已重置喵。"
+                        f"[主动消息] {self._get_session_log_str(normalized_session_id, session_config)} 的用户已回复， 未回复计数器已重置。"
                     )
 
                 if "group" in normalized_session_id.lower():
@@ -304,11 +304,11 @@ class EventsMixin:
             if normalized_session_id != session_id:
                 self.scheduler.remove_job(session_id)
             logger.debug(
-                f"[主动消息] Bot已发言，已取消 {self._get_session_log_str(normalized_session_id)} 的主动消息任务喵。"
+                f"[主动消息] Bot已发言，已取消 {self._get_session_log_str(normalized_session_id)} 的主动消息任务。"
             )
         except Exception as e:
             logger.debug(
-                f"[主动消息] {self._get_session_log_str(normalized_session_id)} 没有待取消的调度任务喵: {e}"
+                f"[主动消息] {self._get_session_log_str(normalized_session_id)} 没有待取消的调度任务: {e}"
             )
 
         # 兜底清理同目标任务
@@ -344,5 +344,5 @@ class EventsMixin:
                 del self.session_temp_state[normalized_session_id]
         except Exception as e:
             logger.error(
-                f"[主动消息] {self._get_session_log_str(session_id)} 的 after_message_sent 处理异常喵: {e}"
+                f"[主动消息] {self._get_session_log_str(session_id)} 的 after_message_sent 处理异常: {e}"
             )

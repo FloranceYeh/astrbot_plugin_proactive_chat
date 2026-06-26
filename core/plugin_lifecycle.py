@@ -39,7 +39,7 @@ class LifecycleMixin:
             await self._validate_config()
         except Exception as e:
             logger.warning(
-                f"[主动消息] 配置验证发现问题喵: {e}，将继续使用默认设置喵。"
+                f"[主动消息] 配置验证发现问题: {e}，将继续使用默认设置。"
             )
 
         # 加载持久化数据
@@ -50,7 +50,7 @@ class LifecycleMixin:
             if normalized:
                 # 仅在发生规范化变更时回写，减少无效 IO
                 await self._save_data_internal()
-        logger.info("[主动消息] 已成功从文件加载会话数据喵。")
+        logger.info("[主动消息] 已成功从文件加载会话数据。")
 
         # 恢复插件启动后的消息时间（用于自动触发判定）
         restored_count = 0
@@ -63,16 +63,16 @@ class LifecycleMixin:
                         self.last_message_times[session_id] = last_time
                         restored_count += 1
                         logger.debug(
-                            f"[主动消息] 已恢复 {self._get_session_log_str(session_id)} 在插件启动后的消息时间喵 -> {last_time}"
+                            f"[主动消息] 已恢复 {self._get_session_log_str(session_id)} 在插件启动后的消息时间 -> {last_time}"
                         )
                     else:
                         logger.debug(
-                            f"[主动消息] 忽略插件启动前的历史消息时间用于自动主动消息任务喵: {self._get_session_log_str(session_id)} -> {last_time}"
+                            f"[主动消息] 忽略插件启动前的历史消息时间用于自动主动消息任务: {self._get_session_log_str(session_id)} -> {last_time}"
                         )
 
         if restored_count > 0:
             logger.info(
-                f"[主动消息] 已从持久化数据恢复 {restored_count} 个会话在插件启动后的消息时间喵。"
+                f"[主动消息] 已从持久化数据恢复 {restored_count} 个会话在插件启动后的消息时间。"
             )
 
         # 读取时区设置（失败时回退系统时区）
@@ -80,7 +80,7 @@ class LifecycleMixin:
             self.timezone = zoneinfo.ZoneInfo(self.context.get_config().get("timezone"))
         except (zoneinfo.ZoneInfoNotFoundError, TypeError, KeyError, ValueError) as e:
             logger.warning(
-                f"[主动消息] 时区配置无效或未配置喵 ({e})，将使用服务器系统时区作为备用喵。"
+                f"[主动消息] 时区配置无效或未配置 ({e})，将使用服务器系统时区作为备用。"
             )
             self.timezone = None
 
@@ -90,14 +90,14 @@ class LifecycleMixin:
 
         # 先恢复持久化任务，再初始化自动触发器，避免重复调度
         await self._init_jobs_from_data()
-        logger.info("[主动消息] 调度器已初始化喵。")
+        logger.info("[主动消息] 调度器已初始化。")
 
         await self._setup_auto_triggers_for_enabled_sessions()
-        logger.info("[主动消息] 自动主动消息触发器初始化完成喵。")
+        logger.info("[主动消息] 自动主动消息触发器初始化完成。")
 
     async def terminate(self) -> None:
         """插件被卸载或停用时调用的清理函数。"""
-        logger.info("[主动消息] 收到插件终止指令，开始清理资源喵。")
+        logger.info("[主动消息] 收到插件终止指令，开始清理资源。")
         try:
             # 取消群聊沉默计时器
             timer_count = len(self.group_timers)
@@ -105,14 +105,14 @@ class LifecycleMixin:
                 try:
                     timer.cancel()
                     logger.debug(
-                        f"[主动消息] 已取消 {self._get_session_log_str(session_id)} 的沉默计时器喵。"
+                        f"[主动消息] 已取消 {self._get_session_log_str(session_id)} 的沉默计时器。"
                     )
                 except Exception as e:
-                    logger.warning(f"[主动消息] 取消计时器时出错喵: {e}")
+                    logger.warning(f"[主动消息] 取消计时器时出错: {e}")
 
             self.group_timers.clear()
             logger.info(
-                f"[主动消息] 已取消 {timer_count} 个正在运行的群聊沉默计时器喵。"
+                f"[主动消息] 已取消 {timer_count} 个正在运行的群聊沉默计时器。"
             )
 
             # 取消自动触发计时器
@@ -121,43 +121,43 @@ class LifecycleMixin:
                 try:
                     timer.cancel()
                     logger.debug(
-                        f"[主动消息] 已取消 {self._get_session_log_str(session_id)} 的自动触发计时器喵。"
+                        f"[主动消息] 已取消 {self._get_session_log_str(session_id)} 的自动触发计时器。"
                     )
                 except Exception as e:
-                    logger.warning(f"[主动消息] 取消自动触发计时器时出错喵: {e}")
+                    logger.warning(f"[主动消息] 取消自动触发计时器时出错: {e}")
 
             self.auto_trigger_timers.clear()
-            logger.info(f"[主动消息] 已取消 {auto_trigger_count} 个自动触发计时器喵。")
+            logger.info(f"[主动消息] 已取消 {auto_trigger_count} 个自动触发计时器。")
 
             # 清理调度器任务（逐个移除后再 shutdown，便于日志定位）
             if self.scheduler and self.scheduler.running:
                 try:
                     jobs = self.scheduler.get_jobs()
-                    logger.info(f"[主动消息] 正在清理调度器任务喵，数量: {len(jobs)}")
+                    logger.info(f"[主动消息] 正在清理调度器任务，数量: {len(jobs)}")
                     for job in jobs:
                         try:
                             self.scheduler.remove_job(job.id)
-                            logger.debug(f"[主动消息] 已移除调度器任务喵: {job.id}")
+                            logger.debug(f"[主动消息] 已移除调度器任务: {job.id}")
                         except Exception as e:
-                            logger.warning(f"[主动消息] 移除调度器任务时出错喵: {e}")
+                            logger.warning(f"[主动消息] 移除调度器任务时出错: {e}")
 
                     self.scheduler.shutdown()
-                    logger.info("[主动消息] 调度器已关闭喵。")
+                    logger.info("[主动消息] 调度器已关闭。")
                 except Exception as e:
-                    logger.error(f"[主动消息] 关闭调度器时出错喵: {e}")
+                    logger.error(f"[主动消息] 关闭调度器时出错: {e}")
 
             # 终止前最后一次持久化，尽量保留当前会话状态
             if self.data_lock:
                 try:
                     async with self.data_lock:
                         await self._save_data_internal()
-                    logger.info("[主动消息] 会话数据已保存喵。")
+                    logger.info("[主动消息] 会话数据已保存。")
                 except Exception as e:
-                    logger.error(f"[主动消息] 保存数据时出错喵: {e}")
+                    logger.error(f"[主动消息] 保存数据时出错: {e}")
 
             await self._cleanup_background_tasks()
         except Exception as e:
-            logger.error(f"[主动消息] 生命周期终止阶段发生异常喵: {e}")
+            logger.error(f"[主动消息] 生命周期终止阶段发生异常: {e}")
         finally:
             # 确保终止日志一定输出
-            logger.info("[主动消息] 主动消息插件已终止喵。")
+            logger.info("[主动消息] 主动消息插件已终止。")

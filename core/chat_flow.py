@@ -69,10 +69,10 @@ class ProactiveCoreMixin:
                 user_message=user_msg_obj,
                 assistant_message=assistant_msg_obj,
             )
-            logger.info("[主动消息] 已成功将本次主动消息存档至对话历史喵。")
+            logger.info("[主动消息] 已成功将本次主动消息存档至对话历史。")
         except Exception as e:
-            logger.error(f"[主动消息] 存档对话历史失败喵: {e}")
-            logger.warning("[主动消息] 对话存档失败喵，但会继续执行后续步骤喵。")
+            logger.error(f"[主动消息] 存档对话历史失败: {e}")
+            logger.warning("[主动消息] 对话存档失败，但会继续执行后续步骤。")
 
         parsed = self._parse_session_id(session_id)
         is_private_session = parsed and (
@@ -89,7 +89,7 @@ class ProactiveCoreMixin:
                 new_unanswered_count
             )
             logger.info(
-                f"[主动消息] {self._get_session_log_str(session_id)} 的第 {new_unanswered_count} 次主动消息已发送完成，当前未回复次数: {new_unanswered_count} 次喵。"
+                f"[主动消息] {self._get_session_log_str(session_id)} 的第 {new_unanswered_count} 次主动消息已发送完成，当前未回复次数: {new_unanswered_count} 次。"
             )
 
             # 私聊任务：锁内仅计算调度参数并写入持久化字段，避免在持锁期间操作调度器。
@@ -136,7 +136,7 @@ class ProactiveCoreMixin:
                 misfire_grace_time=60,
             )
             logger.info(
-                f"[主动消息] 已为 {self._get_session_log_str(session_id, scheduled_job_payload['session_config'])} 安排下一次主动消息喵，时间：{scheduled_job_payload['run_date'].strftime('%Y-%m-%d %H:%M:%S')} 喵。"
+                f"[主动消息] 已为 {self._get_session_log_str(session_id, scheduled_job_payload['session_config'])} 安排下一次主动消息，时间：{scheduled_job_payload['run_date'].strftime('%Y-%m-%d %H:%M:%S')} 。"
             )
 
     async def check_and_chat(self, session_id: str) -> None:
@@ -149,18 +149,18 @@ class ProactiveCoreMixin:
             )
             if not is_allowed:
                 if block_reason == "quiet_hours":
-                    logger.info("[主动消息] 当前为免打扰时段，跳过并重新调度喵。")
+                    logger.info("[主动消息] 当前为免打扰时段，跳过并重新调度。")
                 elif block_reason == "session_disabled":
                     logger.info(
-                        f"[主动消息] {self._get_session_log_str(normalized_session_id)} 已被禁用，跳过并重新调度喵。"
+                        f"[主动消息] {self._get_session_log_str(normalized_session_id)} 已被禁用，跳过并重新调度。"
                     )
                 elif block_reason == "session_config_missing":
                     logger.info(
-                        f"[主动消息] {self._get_session_log_str(normalized_session_id)} 未命中有效会话配置，跳过并重新调度喵。"
+                        f"[主动消息] {self._get_session_log_str(normalized_session_id)} 未命中有效会话配置，跳过并重新调度。"
                     )
                 else:
                     logger.info(
-                        f"[主动消息] {self._get_session_log_str(normalized_session_id)} 当前不满足触发条件（原因: {block_reason}），跳过并重新调度喵。"
+                        f"[主动消息] {self._get_session_log_str(normalized_session_id)} 当前不满足触发条件（原因: {block_reason}），跳过并重新调度。"
                     )
                 await self._schedule_next_chat_and_save(normalized_session_id)
                 return
@@ -179,12 +179,12 @@ class ProactiveCoreMixin:
                 max_unanswered = schedule_conf.get("max_unanswered_times", 3)
                 if max_unanswered > 0 and unanswered_count >= max_unanswered:
                     logger.info(
-                        f"[主动消息] {self._get_session_log_str(normalized_session_id, session_config)} 的未回复次数 ({unanswered_count}) 已达到上限 ({max_unanswered})，暂停主动消息喵。"
+                        f"[主动消息] {self._get_session_log_str(normalized_session_id, session_config)} 的未回复次数 ({unanswered_count}) 已达到上限 ({max_unanswered})，暂停主动消息。"
                     )
                     return
 
             logger.info(
-                f"[主动消息] 开始生成第 {unanswered_count + 1} 次主动消息喵，当前未回复次数: {unanswered_count} 次喵。"
+                f"[主动消息] 开始生成第 {unanswered_count + 1} 次主动消息，当前未回复次数: {unanswered_count} 次。"
             )
 
             # 准备上下文与人格
@@ -237,7 +237,7 @@ class ProactiveCoreMixin:
 
             if has_new_message:
                 logger.info(
-                    "[主动消息] 检测到用户在LLM生成期间发送了新消息，丢弃本次主动消息喵。"
+                    "[主动消息] 检测到用户在LLM生成期间发送了新消息，丢弃本次主动消息。"
                 )
                 return
 
@@ -264,9 +264,9 @@ class ProactiveCoreMixin:
             error_type = type(e).__name__
             error_msg = str(e)
 
-            logger.error("[主动消息] check_and_chat 任务发生致命错误喵:")
-            logger.error(f"[主动消息] 错误类型喵: {error_type}")
-            logger.error(f"[主动消息] 错误信息喵: {error_msg}")
+            logger.error("[主动消息] check_and_chat 任务发生致命错误:")
+            logger.error(f"[主动消息] 错误类型: {error_type}")
+            logger.error(f"[主动消息] 错误信息: {error_msg}")
 
             # 清理失败任务的持久化调度痕迹，避免下次启动误恢复
             try:
@@ -274,21 +274,21 @@ class ProactiveCoreMixin:
                     if self._clear_session_schedule_state(session_id):
                         await self._save_data_internal()
             except Exception as clean_e:
-                logger.debug(f"[主动消息] 清理失败任务数据时出错喵: {clean_e}")
+                logger.debug(f"[主动消息] 清理失败任务数据时出错: {clean_e}")
 
             # 尝试补偿性重调度，尽量维持会话后续触发能力
             try:
                 logger.info(
-                    f"[主动消息] 尝试重新调度 {self._get_session_log_str(session_id)} 的主动消息任务喵。"
+                    f"[主动消息] 尝试重新调度 {self._get_session_log_str(session_id)} 的主动消息任务。"
                 )
                 await self._schedule_next_chat_and_save(session_id)
                 logger.info(
-                    f"[主动消息] {self._get_session_log_str(session_id)} 的任务重新调度成功喵。"
+                    f"[主动消息] {self._get_session_log_str(session_id)} 的任务重新调度成功。"
                 )
             except Exception as se:
-                logger.error(f"[主动消息] 在错误处理中重新调度失败喵: {se}")
+                logger.error(f"[主动消息] 在错误处理中重新调度失败: {se}")
                 logger.error(
-                    f"[主动消息] {self._get_session_log_str(session_id)} 可能需要手动干预喵。"
+                    f"[主动消息] {self._get_session_log_str(session_id)} 可能需要手动干预。"
                 )
         finally:
             await self._clear_manual_trigger_state(normalized_session_id)

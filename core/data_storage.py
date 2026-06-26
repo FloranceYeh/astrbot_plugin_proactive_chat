@@ -36,12 +36,12 @@ class StorageMixin:
                         self.session_data = loaded_data
                     else:
                         logger.warning(
-                            "[主动消息] 会话数据文件结构无效喵，根节点应为对象，将使用空数据启动喵。"
+                            "[主动消息] 会话数据文件结构无效，根节点应为对象，将使用空数据启动。"
                         )
                         self.session_data = {}
             except (OSError, json.JSONDecodeError) as e:
                 logger.error(
-                    f"[主动消息] 加载会话数据失败喵: {e}，将使用空数据启动喵。"
+                    f"[主动消息] 加载会话数据失败: {e}，将使用空数据启动。"
                 )
                 self.session_data = {}
         else:
@@ -64,7 +64,7 @@ class StorageMixin:
                 )
                 await f.write(content_to_write)
         except OSError as e:
-            logger.error(f"[主动消息] 保存会话数据失败喵: {e}")
+            logger.error(f"[主动消息] 保存会话数据失败: {e}")
 
     def _merge_session_info(self, base: dict, incoming: dict) -> dict:
         """合并两份会话数据，避免重复任务与计数错乱。"""

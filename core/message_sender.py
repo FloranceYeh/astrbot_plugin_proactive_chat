@@ -226,18 +226,18 @@ class SenderMixin:
         for handler in handlers:
             try:
                 logger.debug(
-                    f"[主动消息] 正在执行装饰钩子: {handler.handler_full_name} ({handler.handler_module_path}) 喵"
+                    f"[主动消息] 正在执行装饰钩子: {handler.handler_full_name} ({handler.handler_module_path}) "
                 )
                 await handler.handler(event)
             except Exception as e:
                 error_type = type(e).__name__
                 logger.error(
-                    f"[主动消息] 执行装饰钩子失败喵！来源: {handler.handler_full_name}, "
+                    f"[主动消息] 执行装饰钩子失败！来源: {handler.handler_full_name}, "
                     f"错误类型: {error_type}, 错误详情: {e}"
                 )
                 if "Available" in error_type:
                     logger.error(
-                        f"[主动消息] 抓到可能导致 ApiNotAvailable 的嫌疑人喵！模块: {handler.handler_module_path}"
+                        f"[主动消息] 抓到可能导致 ApiNotAvailable 的嫌疑人！模块: {handler.handler_module_path}"
                     )
 
         res = event.get_result()
@@ -255,7 +255,7 @@ class SenderMixin:
             parsed = self._parse_session_id(session_id)
         except Exception as e:
             logger.warning(
-                f"[主动消息] 解析会话标识失败，跳过平台流水补写喵: {e}",
+                f"[主动消息] 解析会话标识失败，跳过平台流水补写: {e}",
                 exc_info=True,
             )
             return
@@ -292,10 +292,10 @@ class SenderMixin:
                 sender_name="bot",
             )
             logger.debug(
-                f"[主动消息] 已将主动消息补写入平台 ({platform_id}) 的流水喵，会话标识为 {target_id}。"
+                f"[主动消息] 已将主动消息补写入平台 ({platform_id}) 的流水，会话标识为 {target_id}。"
             )
         except Exception as e:
-            logger.warning(f"[主动消息] 补写平台流水失败喵: {e}", exc_info=True)
+            logger.warning(f"[主动消息] 补写平台流水失败: {e}", exc_info=True)
 
     async def _send_chain_with_hooks(self, session_id: str, components: list) -> None:
         """发送消息链（含装饰钩子）。"""
@@ -327,26 +327,26 @@ class SenderMixin:
 
         if not target_platform:
             logger.warning(
-                f"[主动消息] 找不到指定的平台 {p_id} 喵，尝试使用核心 API 兜底喵。"
+                f"[主动消息] 找不到指定的平台 {p_id} ，尝试使用核心 API 兜底。"
             )
             await self.context.send_message(session_id, chain)
             await self._persist_proactive_message_to_platform_history(session_id, chain)
             return
 
         if target_platform.status != PlatformStatus.RUNNING:
-            logger.warning(f"[主动消息] 平台 {p_id} 未运行喵，跳过主动消息喵。")
+            logger.warning(f"[主动消息] 平台 {p_id} 未运行，跳过主动消息。")
             return
 
         try:
             session_obj = MS(platform_name=p_id, message_type=m_type, session_id=t_id)
             await target_platform.send_by_session(session_obj, chain)
-            logger.debug(f"[主动消息] 消息将通过平台 {p_id} 送达喵")
+            logger.debug(f"[主动消息] 消息将通过平台 {p_id} 送达")
             if p_id != "webchat":
                 await self._persist_proactive_message_to_platform_history(
                     session_id, chain
                 )
         except Exception as e:
-            logger.error(f"[主动消息] 通过平台 {p_id} 发送失败喵: {e}")
+            logger.error(f"[主动消息] 通过平台 {p_id} 发送失败: {e}")
             logger.debug(traceback.format_exc())
 
     async def _send_proactive_message(self, session_id: str, text: str) -> None:
@@ -354,12 +354,12 @@ class SenderMixin:
         session_config = self._get_session_config(session_id)
         if not session_config:
             logger.info(
-                f"[主动消息] 无法获取会话配置，跳过 {self._get_session_log_str(session_id)} 的消息发送喵。"
+                f"[主动消息] 无法获取会话配置，跳过 {self._get_session_log_str(session_id)} 的消息发送。"
             )
             return
 
         logger.info(
-            f"[主动消息] 开始发送 {self._get_session_log_str(session_id, session_config)} 的主动消息喵。"
+            f"[主动消息] 开始发送 {self._get_session_log_str(session_id, session_config)} 的主动消息。"
         )
 
         seg_conf = session_config.get("segmented_reply_settings", {})
@@ -378,14 +378,14 @@ class SenderMixin:
             if not segments:
                 segments = [text]
 
-            logger.info(f"[主动消息] 分段回复已启用，将发送 {len(segments)} 条消息喵。")
+            logger.info(f"[主动消息] 分段回复已启用，将发送 {len(segments)} 条消息。")
 
             # 分段顺序发送，段间按策略等待，模拟自然输出节奏
             for idx, seg in enumerate(segments):
                 await self._send_chain_with_hooks(session_id, [Plain(text=seg)])
                 if idx < len(segments) - 1:
                     interval = await self._calc_interval(seg, seg_conf)
-                    logger.debug(f"[主动消息] 分段回复等待 {interval:.2f} 秒喵。")
+                    logger.debug(f"[主动消息] 分段回复等待 {interval:.2f} 秒。")
                     await asyncio.sleep(interval)
         else:
             await self._send_chain_with_hooks(session_id, [Plain(text=text)])
@@ -394,5 +394,5 @@ class SenderMixin:
         if "group" in session_id.lower():
             await self._reset_group_silence_timer(session_id)
             logger.info(
-                f"[主动消息] Bot主动消息已发送，已重置 {self._get_session_log_str(session_id, session_config)} 的沉默倒计时喵。"
+                f"[主动消息] Bot主动消息已发送，已重置 {self._get_session_log_str(session_id, session_config)} 的沉默倒计时。"
             )

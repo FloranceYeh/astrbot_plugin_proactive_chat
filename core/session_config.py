@@ -29,7 +29,7 @@ class ConfigMixin:
                 session_list = friend_settings.get("session_list", [])
                 if not session_list:
                     logger.warning(
-                        "[主动消息] 私聊主动消息已启用但未配置任何会话喵（session_list 为空）。"
+                        "[主动消息] 私聊主动消息已启用但未配置任何会话（session_list 为空）。"
                     )
 
                 # 调度区间合法性
@@ -38,7 +38,7 @@ class ConfigMixin:
                 max_interval = schedule_settings.get("max_interval_minutes", 900)
                 if min_interval > max_interval:
                     logger.warning(
-                        "[主动消息] 私聊主动消息配置中最小间隔大于最大间隔喵，将自动调整喵。"
+                        "[主动消息] 私聊主动消息配置中最小间隔大于最大间隔，将自动调整。"
                     )
 
             # 群聊配置校验
@@ -46,13 +46,13 @@ class ConfigMixin:
                 session_list = group_settings.get("session_list", [])
                 if not session_list:
                     logger.warning(
-                        "[主动消息] 群聊主动消息已启用但未配置任何会话喵（session_list 为空）。"
+                        "[主动消息] 群聊主动消息已启用但未配置任何会话（session_list 为空）。"
                     )
 
-            logger.info("[主动消息] 配置验证完成喵。")
+            logger.info("[主动消息] 配置验证完成。")
 
         except Exception as e:
-            logger.error(f"[主动消息] 配置验证过程出错喵: {e}")
+            logger.error(f"[主动消息] 配置验证过程出错: {e}")
             raise
 
     def _get_session_config(self, session_id: str) -> dict | None:

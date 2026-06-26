@@ -81,7 +81,7 @@ class ProactiveChatPlugin(
         self.first_message_logged: set[str] = set()
         self._cleanup_counter = 0
 
-        logger.info("[主动消息] 插件实例已创建喵。")
+        logger.info("[主动消息] 插件实例已创建。")
 
     def _track_task(self, task: asyncio.Task[None] | None) -> asyncio.Task[None] | None:
         """登记后台任务引用，避免任务过早释放。"""

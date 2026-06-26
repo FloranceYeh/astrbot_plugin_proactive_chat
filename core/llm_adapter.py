@@ -62,7 +62,7 @@ class LlmMixin:
         return normalized or set(self.DEFAULT_BOT_IDENTIFIERS)
 
     def _sanitize_history_content(self, history: list) -> list:
-        """清洗历史消息内容，确保所有内容均为纯文本字符串喵。"""
+        """清洗历史消息内容，确保所有内容均为纯文本字符串。"""
         sanitized_history = []
         for msg in history:
             # 兼容不同类型的历史消息对象
@@ -72,7 +72,7 @@ class LlmMixin:
                 msg_dict = msg.copy()
             else:
                 logger.debug(
-                    f"[主动消息] 历史记录中发现无法识别的消息格式: {type(msg)}，已跳过喵。"
+                    f"[主动消息] 历史记录中发现无法识别的消息格式: {type(msg)}，已跳过。"
                 )
                 continue
 
@@ -226,7 +226,7 @@ class LlmMixin:
         mgr = getattr(self.context, "message_history_manager", None)
         if not mgr:
             logger.warning(
-                "[主动消息] 当前上下文未提供消息历史管理器（message_history_manager），因此无法读取平台流水喵。"
+                "[主动消息] 当前上下文未提供消息历史管理器（message_history_manager），因此无法读取平台流水。"
             )
             return [], 0
 
@@ -243,7 +243,7 @@ class LlmMixin:
                     return normalized_records, len(normalized_records)
             except Exception as e:
                 logger.warning(
-                    f"[主动消息] 读取平台流水失败喵：平台标识为“{platform_id}”，用户标识为“{user_id}”，异常信息：{e}",
+                    f"[主动消息] 读取平台流水失败：平台标识为“{platform_id}”，用户标识为“{user_id}”，异常信息：{e}",
                     exc_info=True,
                 )
                 continue
@@ -504,7 +504,7 @@ class LlmMixin:
                 effective_history = [platform_context]
             else:
                 logger.warning(
-                    f"[主动消息] 平台流水模式下没有读取到平台流水，已回退为对话历史，共 {conversation_count} 条喵。"
+                    f"[主动消息] 平台流水模式下没有读取到平台流水，已回退为对话历史，共 {conversation_count} 条。"
                 )
                 effective_history = conversation_history
         elif source_mode == "hybrid":
@@ -513,12 +513,12 @@ class LlmMixin:
                 effective_history = [platform_context, *conversation_history]
             else:
                 logger.warning(
-                    f"[主动消息] 混合模式下没有读取到平台流水，因此仅使用对话历史，共 {conversation_count} 条喵。"
+                    f"[主动消息] 混合模式下没有读取到平台流水，因此仅使用对话历史，共 {conversation_count} 条。"
                 )
                 effective_history = conversation_history
         else:
             logger.warning(
-                f"[主动消息] 遇到未识别的上下文模式“{source_mode}”，已回退为对话历史喵。"
+                f"[主动消息] 遇到未识别的上下文模式“{source_mode}”，已回退为对话历史。"
             )
             effective_history = conversation_history
 
@@ -531,7 +531,7 @@ class LlmMixin:
         logger.info(
             f"[主动消息] 上下文注入来源：{source_mode_label}，读取到对话历史 {conversation_count} 条，"
             f"平台流水原始记录 {platform_records_count} 条，注入上下文 {platform_injected_count} 条，"
-            f"平台流水上下文长度 {platform_chars} 字，最终提供给模型的上下文共 {len(effective_history)} 条喵。"
+            f"平台流水上下文长度 {platform_chars} 字，最终提供给模型的上下文共 {len(effective_history)} 条。"
         )
         return effective_history
 
@@ -567,22 +567,22 @@ class LlmMixin:
 
             if not conv_id:
                 logger.info(
-                    f"[主动消息] {self._get_session_log_str(session_id)} 是新会话，尝试创建新对话喵。"
+                    f"[主动消息] {self._get_session_log_str(session_id)} 是新会话，尝试创建新对话。"
                 )
                 try:
                     conv_id = await self.context.conversation_manager.new_conversation(
                         session_id
                     )
-                    logger.info(f"[主动消息] 新对话创建成功喵，ID: {conv_id}")
+                    logger.info(f"[主动消息] 新对话创建成功，ID: {conv_id}")
                 except ValueError:
                     raise
                 except Exception as e:
-                    logger.error(f"[主动消息] 创建新对话失败喵: {e}", exc_info=True)
+                    logger.error(f"[主动消息] 创建新对话失败: {e}", exc_info=True)
                     return None
 
             if not conv_id:
                 logger.warning(
-                    f"[主动消息] 无法获取或创建 {self._get_session_log_str(session_id)} 的对话 ID，跳过本次任务喵。"
+                    f"[主动消息] 无法获取或创建 {self._get_session_log_str(session_id)} 的对话 ID，跳过本次任务。"
                 )
                 return None
 
@@ -601,11 +601,11 @@ class LlmMixin:
                     else:
                         pure_history_messages = conversation.history
                 except (json.JSONDecodeError, TypeError):
-                    logger.warning("[主动消息] 解析历史记录失败，使用空历史喵。")
+                    logger.warning("[主动消息] 解析历史记录失败，使用空历史。")
 
             if not isinstance(pure_history_messages, list):
                 logger.warning(
-                    "[主动消息] 历史记录格式异常（非列表），已回退为空历史喵。"
+                    "[主动消息] 历史记录格式异常（非列表），已回退为空历史。"
                 )
                 pure_history_messages = []
 
@@ -618,7 +618,7 @@ class LlmMixin:
                 if persona:
                     original_system_prompt = persona.system_prompt
                     logger.info(
-                        f"[主动消息] 使用会话人格: '{conversation.persona_id}' 喵"
+                        f"[主动消息] 使用会话人格: '{conversation.persona_id}' "
                     )
 
             if not original_system_prompt:
@@ -629,11 +629,11 @@ class LlmMixin:
                 )
                 if default_persona:
                     original_system_prompt = default_persona["prompt"]
-                    logger.info("[主动消息] 使用默认人格设定喵")
+                    logger.info("[主动消息] 使用默认人格设定")
 
             if not original_system_prompt:
                 logger.error(
-                    "[主动消息] 呜喵？！关键错误喵：无法加载任何人格设定，放弃喵。"
+                    "[主动消息] 关键错误：无法加载任何人格设定，放弃。"
                 )
                 return None
 
@@ -661,7 +661,7 @@ class LlmMixin:
                 unanswered_count=current_unanswered_count,
             )
 
-            logger.info("[主动消息] 上下文与人格设定已准备完成喵。")
+            logger.info("[主动消息] 上下文与人格设定已准备完成。")
 
             return {
                 "conv_id": conv_id,
@@ -671,7 +671,7 @@ class LlmMixin:
             }
 
         except Exception as e:
-            logger.warning(f"[主动消息] 获取上下文或人格失败喵: {e}")
+            logger.warning(f"[主动消息] 获取上下文或人格失败: {e}")
             return None
 
     async def _generate_llm_response(
@@ -689,7 +689,7 @@ class LlmMixin:
             "{{unanswered_count}}", str(unanswered_count)
         ).replace("{{current_time}}", now_str)
 
-        logger.debug("[主动消息] 已生成包含动机和时间的 Prompt 喵。")
+        logger.debug("[主动消息] 已生成包含动机和时间的 Prompt 。")
 
         llm_response_obj = None
         try:
@@ -702,11 +702,11 @@ class LlmMixin:
                 contexts=history_messages,
                 system_prompt=system_prompt,
             )
-            logger.info("[主动消息] 使用新 API 调用 LLM 成功喵。")
+            logger.info("[主动消息] 使用新 API 调用 LLM 成功。")
         except Exception as llm_error:
-            logger.error(f"[主动消息] 使用新 API 调用 LLM 失败喵: {llm_error}")
-            logger.info(f"[主动消息] 错误类型喵: {type(llm_error).__name__}")
-            logger.info(f"[主动消息] 错误详情喵: {str(llm_error)}")
+            logger.error(f"[主动消息] 使用新 API 调用 LLM 失败: {llm_error}")
+            logger.info(f"[主动消息] 错误类型: {type(llm_error).__name__}")
+            logger.info(f"[主动消息] 错误详情: {str(llm_error)}")
 
             # 回退到旧接口（兼容历史 Provider 实现）
             try:
@@ -717,16 +717,16 @@ class LlmMixin:
                         contexts=history_messages,
                         system_prompt=system_prompt,
                     )
-                    logger.info("[主动消息] 使用传统 API 回退成功喵。")
+                    logger.info("[主动消息] 使用传统 API 回退成功。")
                 else:
-                    logger.warning("[主动消息] 未找到 LLM Provider，放弃并重新调度喵。")
+                    logger.warning("[主动消息] 未找到 LLM Provider，放弃并重新调度。")
                     return None, final_user_simulation_prompt
             except Exception as fallback_error:
-                logger.error(f"[主动消息] 传统 API 回退也失败喵: {fallback_error}")
+                logger.error(f"[主动消息] 传统 API 回退也失败: {fallback_error}")
                 logger.info(
-                    f"[主动消息] 回退错误类型喵: {type(fallback_error).__name__}"
+                    f"[主动消息] 回退错误类型: {type(fallback_error).__name__}"
                 )
-                logger.error("[主动消息] 呜喵？！LLM调用完全失败，将重新调度任务喵。")
+                logger.error("[主动消息] LLM调用完全失败，将重新调度任务。")
                 return None, final_user_simulation_prompt
 
         # 仅在确实拿到 completion_text 时视为成功
@@ -734,14 +734,14 @@ class LlmMixin:
             response_text = llm_response_obj.completion_text.strip()
             if response_text == "[object Object]":
                 logger.error(
-                    "[主动消息] 喵呜！LLM 返回了意料之外的 '[object Object]' 字符串喵！"
+                    "[主动消息] LLM 返回了意料之外的 '[object Object]' 字符串！"
                 )
                 logger.warning(
-                    "[主动消息] 这通常是因为上下文或 Prompt 中包含了无法解析的对象喵。已拦截本次发送喵。"
+                    "[主动消息] 这通常是因为上下文或 Prompt 中包含了无法解析的对象。已拦截本次发送。"
                 )
                 return None, final_user_simulation_prompt
-            logger.info(f"[主动消息] LLM 已生成文本喵，长度: {len(response_text)}。")
+            logger.info(f"[主动消息] LLM 已生成文本，长度: {len(response_text)}。")
             return response_text, final_user_simulation_prompt
 
-        logger.warning("[主动消息] LLM 调用失败或返回空内容，重新调度喵。")
+        logger.warning("[主动消息] LLM 调用失败或返回空内容，重新调度。")
         return None, final_user_simulation_prompt
