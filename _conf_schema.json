@@ -13,7 +13,7 @@
                 "description": "📋 私聊会话 UMO 列表",
                 "type": "list",
                 "default": [],
-                "hint": "请输入完整的 UMO，可通过 /sid 指令快捷获取。格式: {platform_name}:{message_type}:{session_id}。{platform_name} 就是你在 WebUI 中的 机器人 一栏自定义的机器人名称。{message_type} 参数为 “FriendMessage”。例如 default:FriendMessage:123456789"
+                "hint": "请输入完整的 UMO，可通过 /sid 指令快捷获取。格式: {platform_name}:{message_type}:{session_id}。{platform_name} 为平台标识，{message_type} 参数为 “FriendMessage”。例如 default:FriendMessage:123456789"
             },
             "auto_trigger_settings": {
                 "description": "🤖 自动主动消息设置",
@@ -140,24 +140,6 @@
                     }
                 }
             },
-            "tts_settings": {
-                "description": "🔊 私聊全局语音合成 (TTS) 设置",
-                "type": "object",
-                "items": {
-                    "enable_tts": {
-                        "description": "💬 启用 TTS 功能",
-                        "type": "bool",
-                        "default": true,
-                        "hint": "开启后，主动消息会尝试生成语音并发送"
-                    },
-                    "always_send_text": {
-                        "description": "🔤 发送语音后是否附带原文",
-                        "type": "bool",
-                        "default": true,
-                        "hint": "开启后，即使 TTS 成功发送了语音，也会再发送一条纯文本原文，确保用户能看到内容"
-                    }
-                }
-            },
             "segmented_reply_settings": {
                 "description": "🔪 分段回复设置",
                 "type": "object",
@@ -279,7 +261,7 @@
                 "description": "📋 群聊会话 UMO 列表",
                 "type": "list",
                 "default": [],
-                "hint": "请输入完整的 UMO，可通过 /sid 指令快捷获取。格式: {platform_name}:{message_type}:{session_id}。{platform_name} 就是你在 WebUI 中的 机器人 一栏自定义的机器人名称。{message_type} 参数为“GroupMessage”。例如 default:GroupMessage:123456789"
+                "hint": "请输入完整的 UMO，可通过 /sid 指令快捷获取。格式: {platform_name}:{message_type}:{session_id}。{platform_name} 为平台标识，{message_type} 参数为“GroupMessage”。例如 default:GroupMessage:123456789"
             },
             "auto_trigger_settings": {
                 "description": "🤖 自动主动消息设置",
@@ -417,24 +399,6 @@
                     }
                 }
             },
-            "tts_settings": {
-                "description": "🔊 群聊全局语音合成 (TTS) 设置",
-                "type": "object",
-                "items": {
-                    "enable_tts": {
-                        "description": "💬 启用群聊的 TTS 功能",
-                        "type": "bool",
-                        "default": false,
-                        "hint": "开启后，群聊主动消息会尝试生成语音并发送"
-                    },
-                    "always_send_text": {
-                        "description": "🔤 发送语音后是否附带原文",
-                        "type": "bool",
-                        "default": true,
-                        "hint": "开启后，即使 TTS 成功发送了语音，也会再发送一条纯文本原文，确保所有人都能看到内容"
-                    }
-                }
-            },
             "segmented_reply_settings": {
                 "description": "🔪 分段回复设置",
                 "type": "object",
@@ -539,75 +503,6 @@
                         }
                     }
                 }
-            }
-        }
-    },
-    "web_admin": {
-        "description": "🌐 Web 管理端设置",
-        "type": "object",
-        "items": {
-            "enabled": {
-                "description": "✅ 启用 Web 管理端",
-                "type": "bool",
-                "default": true,
-                "hint": "启用后会启动主动消息插件的独立 WebUI 管理端"
-            },
-            "host": {
-                "description": "监听地址",
-                "type": "string",
-                "default": "127.0.0.1",
-                "hint": "默认仅本机访问；如需局域网访问可改为 0.0.0.0"
-            },
-            "port": {
-                "description": "监听端口",
-                "type": "int",
-                "default": 4100,
-                "slider": {
-                    "min": 1024,
-                    "max": 65535,
-                    "step": 1
-                }
-            },
-            "password": {
-                "description": "访问密码（留空则无需登录）",
-                "type": "string",
-                "default": "",
-                "hint": "建议生产环境设置强密码"
-            }
-        }
-    },
-    "notification_settings": {
-        "description": "🔔 通知系统设置",
-        "type": "object",
-        "items": {
-            "enabled": {
-                "description": "✅ 启用通知系统",
-                "type": "bool",
-                "default": true,
-                "hint": "启用后，插件将定时从远端通知平台拉取通知并同步到 Web 管理端"
-            },
-            "poll_interval_seconds": {
-                "description": "通知轮询间隔（秒）",
-                "type": "int",
-                "default": 300,
-                "hint": "插件向远端通知平台轮询更新的时间间隔，最低将按 30 秒处理",
-                "slider": {
-                    "min": 30,
-                    "max": 3600,
-                    "step": 10
-                }
-            }
-        }
-    },
-    "telemetry_config": {
-        "description": "📡 遥测设置",
-        "type": "object",
-        "items": {
-            "enabled": {
-                "description": "✅ 启用匿名遥测",
-                "type": "bool",
-                "default": true,
-                "hint": "启用后，插件会匿名上报配置统计与错误信息，用于帮助改进插件。不会上报会话列表、提示词和密码等敏感信息"
             }
         }
     }

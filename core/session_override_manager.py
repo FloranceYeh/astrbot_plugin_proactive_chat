@@ -24,7 +24,6 @@ class SessionOverrideManager:
         "context_settings",
         "auto_trigger_settings",
         "schedule_settings",
-        "tts_settings",
         "segmented_reply_settings",
         "group_idle_trigger_minutes",
     }

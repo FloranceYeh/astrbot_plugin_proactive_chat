@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from astrbot.api import logger
-from astrbot.core.message.components import Plain, Record
+from astrbot.core.message.components import Plain
 from astrbot.core.message.message_event_result import MessageChain, MessageEventResult
 from astrbot.core.platform.astrbot_message import AstrBotMessage, Group, MessageMember
 from astrbot.core.platform.message_type import MessageType
@@ -41,7 +41,6 @@ class SenderMixin:
 
     context: Any
     session_data: dict
-    telemetry: Any
     data_dir: Any
 
     def _split_text(self, text: str, settings: dict) -> list[str]:
@@ -236,16 +235,6 @@ class SenderMixin:
                     f"[主动消息] 执行装饰钩子失败喵！来源: {handler.handler_full_name}, "
                     f"错误类型: {error_type}, 错误详情: {e}"
                 )
-                if self.telemetry and self.telemetry.enabled:
-                    # 装饰钩子属于外围扩展链路，单独上报便于定位是否为第三方装饰器导致的问题。
-                    self._track_task(
-                        asyncio.create_task(
-                            self.telemetry.track_error(
-                                e,
-                                module="core.message_sender._trigger_decorating_hooks",
-                            )
-                        )
-                    )
                 if "Available" in error_type:
                     logger.error(
                         f"[主动消息] 抓到可能导致 ApiNotAvailable 的嫌疑人喵！模块: {handler.handler_module_path}"
@@ -359,19 +348,9 @@ class SenderMixin:
         except Exception as e:
             logger.error(f"[主动消息] 通过平台 {p_id} 发送失败喵: {e}")
             logger.debug(traceback.format_exc())
-            if self.telemetry and self.telemetry.enabled:
-                # 平台发送失败是实际送达链路的问题，与 LLM 生成失败应在遥测上分开统计。
-                self._track_task(
-                    asyncio.create_task(
-                        self.telemetry.track_error(
-                            e,
-                            module="core.message_sender._send_chain_with_hooks",
-                        )
-                    )
-                )
 
     async def _send_proactive_message(self, session_id: str, text: str) -> None:
-        """发送主动消息（支持TTS与分段）。"""
+        """发送主动消息（支持分段）。"""
         session_config = self._get_session_config(session_id)
         if not session_config:
             logger.info(
@@ -383,111 +362,33 @@ class SenderMixin:
             f"[主动消息] 开始发送 {self._get_session_log_str(session_id, session_config)} 的主动消息喵。"
         )
 
-        tts_conf = session_config.get("tts_settings", {})
         seg_conf = session_config.get("segmented_reply_settings", {})
 
-        # 先尝试 TTS：成功后是否继续发文本由 always_send_text 控制
-        is_tts_sent = False
-        if tts_conf.get("enable_tts", True):
-            try:
-                logger.info("[主动消息] 尝试进行手动TTS喵。")
-                tts_provider = self.context.get_using_tts_provider(umo=session_id)
-                if tts_provider:
-                    audio_path = await tts_provider.get_audio(text)
-                    if audio_path:
-                        await self._send_chain_with_hooks(
-                            session_id, [Record(file=audio_path)]
-                        )
-                        is_tts_sent = True
-                        await asyncio.sleep(0.5)
-            except Exception as e:
-                logger.error(f"[主动消息] 手动TTS流程发生异常喵: {e}")
-                if self.telemetry and self.telemetry.enabled:
-                    # TTS 失败不一定意味着文本发送失败，因此单独挂到 tts 子模块下记录。
-                    self._track_task(
-                        asyncio.create_task(
-                            self.telemetry.track_error(
-                                e,
-                                module="core.message_sender._send_proactive_message.tts",
-                            )
-                        )
-                    )
+        enable_seg = seg_conf.get("enable", False)
+        threshold = seg_conf.get("words_count_threshold", 150)
 
-        # 是否继续发送文本：未发出 TTS 或配置要求始终发文本
-        should_send_text = not is_tts_sent or tts_conf.get("always_send_text", True)
+        # 注意：这里的 threshold 语义是“**不分段字数阈值**”，与字段名历史含义保持一致。
+        # 也就是说：
+        # 1. 文本较短（<= threshold）时，允许按规则切成多段，模拟更自然的连续输出；
+        # 2. 文本较长（> threshold）时，直接整段发送，避免长文被切碎后影响阅读体验。
+        # 该行为与 [`_conf_schema.json`](./_conf_schema.json) 和 [`README.md`](README.md) 的现有说明一致，
+        # 因此这里不是“超过阈值才分段”的常见语义，而是本插件刻意保留的兼容策略。
+        if enable_seg and len(text) <= threshold:
+            segments = self._split_text(text, seg_conf)
+            if not segments:
+                segments = [text]
 
-        if should_send_text:
-            enable_seg = seg_conf.get("enable", False)
-            threshold = seg_conf.get("words_count_threshold", 150)
+            logger.info(f"[主动消息] 分段回复已启用，将发送 {len(segments)} 条消息喵。")
 
-            # 注意：这里的 threshold 语义是“**不分段字数阈值**”，与字段名历史含义保持一致。
-            # 也就是说：
-            # 1. 文本较短（<= threshold）时，允许按规则切成多段，模拟更自然的连续输出；
-            # 2. 文本较长（> threshold）时，直接整段发送，避免长文被切碎后影响阅读体验。
-            # 该行为与 [`_conf_schema.json`](./_conf_schema.json) 和 [`README.md`](README.md) 的现有说明一致，
-            # 因此这里不是“超过阈值才分段”的常见语义，而是本插件刻意保留的兼容策略。
-            if enable_seg and len(text) <= threshold:
-                segments = self._split_text(text, seg_conf)
-                if not segments:
-                    segments = [text]
-
-                logger.info(
-                    f"[主动消息] 分段回复已启用，将发送 {len(segments)} 条消息喵。"
-                )
-                if self.telemetry and self.telemetry.enabled:
-                    # 这里只记录分段数、文本长度、TTS 开关等统计值，不上传任何消息正文内容。
-                    self._track_task(
-                        asyncio.create_task(
-                            self.telemetry.track_feature(
-                                "message_send_result",
-                                {
-                                    "session_type": session_config.get(
-                                        "_session_type", "unknown"
-                                    ),
-                                    "tts_enabled": bool(
-                                        tts_conf.get("enable_tts", True)
-                                    ),
-                                    "tts_sent": is_tts_sent,
-                                    "segmented_enabled": True,
-                                    "segment_count": len(segments),
-                                    "text_length": len(text),
-                                    "success": True,
-                                },
-                            )
-                        )
-                    )
-
-                # 分段顺序发送，段间按策略等待，模拟自然输出节奏
-                for idx, seg in enumerate(segments):
-                    await self._send_chain_with_hooks(session_id, [Plain(text=seg)])
-                    if idx < len(segments) - 1:
-                        interval = await self._calc_interval(seg, seg_conf)
-                        logger.debug(f"[主动消息] 分段回复等待 {interval:.2f} 秒喵。")
-                        await asyncio.sleep(interval)
-            else:
-                await self._send_chain_with_hooks(session_id, [Plain(text=text)])
-                if self.telemetry and self.telemetry.enabled:
-                    # 非分段文本发送同样记录统一的发送统计，便于后续比较不同发送策略的使用占比。
-                    self._track_task(
-                        asyncio.create_task(
-                            self.telemetry.track_feature(
-                                "message_send_result",
-                                {
-                                    "session_type": session_config.get(
-                                        "_session_type", "unknown"
-                                    ),
-                                    "tts_enabled": bool(
-                                        tts_conf.get("enable_tts", True)
-                                    ),
-                                    "tts_sent": is_tts_sent,
-                                    "segmented_enabled": False,
-                                    "segment_count": 1,
-                                    "text_length": len(text),
-                                    "success": True,
-                                },
-                            )
-                        )
-                    )
+            # 分段顺序发送，段间按策略等待，模拟自然输出节奏
+            for idx, seg in enumerate(segments):
+                await self._send_chain_with_hooks(session_id, [Plain(text=seg)])
+                if idx < len(segments) - 1:
+                    interval = await self._calc_interval(seg, seg_conf)
+                    logger.debug(f"[主动消息] 分段回复等待 {interval:.2f} 秒喵。")
+                    await asyncio.sleep(interval)
+        else:
+            await self._send_chain_with_hooks(session_id, [Plain(text=text)])
 
         # Bot 在群聊发言后需要重置沉默计时
         if "group" in session_id.lower():

@@ -233,7 +233,6 @@ class SchedulerMixin:
         """为所有启用了自动触发功能的会话设置自动主动消息触发器。"""
         logger.info("[主动消息] 开始检查并设置自动主动消息触发器喵...")
 
-        # 统计：成功创建、已存在持久化任务、无效/未配置、未启用自动触发、已达未回复上限
         auto_trigger_count = 0
         skipped_existing = 0
         skipped_invalid = 0
@@ -618,7 +617,7 @@ class SchedulerMixin:
                 run_date = datetime.fromtimestamp(next_trigger_time, tz=self.timezone)
 
                 # 自动触发生成的任务虽然不持久化到磁盘，但仍需补齐运行时元信息，
-                # 以便 Web 管理端能够正确计算倒计时进度，而不是误判为满进度。
+                # 以便后续调度与状态恢复逻辑能基于同一套字段判断。
                 session_payload = self.session_data.setdefault(session_id, {})
                 session_payload["last_scheduled_at"] = scheduled_at
                 session_payload["last_schedule_min_interval_seconds"] = min_interval
