@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+import re
 from datetime import datetime
 from typing import Any
 
@@ -29,6 +30,14 @@ class LlmMixin:
     PLATFORM_FILE_PLACEHOLDER = "[文件]"
     PLATFORM_FILE_PLACEHOLDER_TEMPLATE = "[文件{name}]"
     DEFAULT_BOT_IDENTIFIERS = {"bot"}
+    LIFE_SCHEDULE_TIME_RE = re.compile(
+        r"(?m)^\s*(?:[-*•·]\s*)?"
+        r"(?:\d+[.)、]\s*)?"
+        r"(?:[^\d\n]{0,12}?\s*)?"
+        r"(?P<hour>[01]?\d|2[0-3])"
+        r"(?:[:：](?P<minute>[0-5]?\d)|点(?:(?P<half>半)|(?P<minute_cn>[0-5]?\d)?分?))"
+        r"\s*(?P<text>.+?)\s*$"
+    )
 
     context: Any
     timezone: Any
@@ -196,7 +205,7 @@ class LlmMixin:
 
         lines = [
             "<life_schedule_context>",
-            "以下是角色今天的生活状态。主动开口时应优先自然参考它，让消息与当前穿搭或日程相关，但不要机械复述；如果它与真实对话冲突，以真实对话为准。",
+            "以下是角色今天的生活状态。主动开口时必须优先参考当前时间段的日程重点，让消息与此刻正在发生或刚刚开始的安排相关；不要机械复述完整日程。如果它与真实对话冲突，以真实对话为准。",
         ]
 
         meta = life_data.get("meta")
@@ -204,11 +213,27 @@ class LlmMixin:
         if style:
             lines.append(f"穿搭风格: {style}")
 
+        schedule = (
+            str(life_data.get("schedule") or "").strip()
+            if settings["include_schedule"]
+            else ""
+        )
+        current_schedule_focus = self._select_current_life_schedule_focus(schedule)
+        current_time_label = self._get_life_schedule_time_label()
+        if current_time_label:
+            lines.append(f"当前时间: {current_time_label}")
+        if current_schedule_focus:
+            lines.append(f"当前时间段日程重点: {current_schedule_focus}")
+            lines.append(
+                "主动消息生成要求: 优先围绕当前时间段日程重点自然开口，可结合穿搭和最近聊天上下文；不要把完整日程列表当作正文复述。"
+            )
+        elif schedule:
+            lines.append("当前时间段日程重点: 未解析到具体时间点，请按今日日程整体保持一致。")
+
         outfit = str(life_data.get("outfit") or "").strip()
         if settings["include_outfit"] and outfit:
             lines.append(f"今日穿搭: {outfit}")
 
-        schedule = str(life_data.get("schedule") or "").strip()
         if settings["include_schedule"] and schedule:
             lines.append(f"今日日程: {schedule}")
 
@@ -231,6 +256,70 @@ class LlmMixin:
                 injection += "\n</life_schedule_context>"
 
         return injection
+
+    def _get_life_schedule_time_label(self) -> str:
+        """返回带中文时段的当前时间标签。"""
+        try:
+            now = datetime.now(self.timezone)
+        except Exception:
+            now = datetime.now()
+
+        hour = now.hour
+        if hour < 6:
+            period = "深夜"
+        elif hour < 9:
+            period = "清晨"
+        elif hour < 12:
+            period = "上午"
+        elif hour < 14:
+            period = "中午"
+        elif hour < 18:
+            period = "下午"
+        elif hour < 22:
+            period = "晚上"
+        else:
+            period = "深夜"
+
+        return f"{now.strftime('%Y年%m月%d日 %H:%M')}（{period}）"
+
+    def _extract_life_schedule_activities(self, schedule: str) -> list[tuple[int, str]]:
+        """从日程文本中提取带时间点的活动。"""
+        activities: list[tuple[int, str]] = []
+        for match in self.LIFE_SCHEDULE_TIME_RE.finditer(str(schedule or "")):
+            hour = int(match.group("hour"))
+            minute = 30 if match.group("half") else int(
+                match.group("minute") or match.group("minute_cn") or "0"
+            )
+            text = match.group("text").strip()
+            if text:
+                activities.append(
+                    (hour * 60 + minute, f"{hour:02d}:{minute:02d} {text}")
+                )
+
+        return sorted(activities, key=lambda item: item[0])
+
+    def _select_current_life_schedule_focus(self, schedule: str) -> str:
+        """选择当前时间对应的最近日程项；若尚未开始，则选择下一项。"""
+        activities = self._extract_life_schedule_activities(schedule)
+        if not activities:
+            return ""
+
+        try:
+            now = datetime.now(self.timezone)
+        except Exception:
+            now = datetime.now()
+
+        current_minute = now.hour * 60 + now.minute
+        if current_minute < activities[0][0]:
+            return activities[0][1]
+
+        current = activities[0][1]
+        for minute, text in activities:
+            if minute <= current_minute:
+                current = text
+            else:
+                break
+        return current
 
     async def _build_life_scheduler_context_injection(
         self, session_config: dict[str, Any] | None

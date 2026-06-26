@@ -17,7 +17,7 @@
 
 如需让主动消息包含日程，请同时安装并启用 [`astrbot_plugin_life_scheduler`](https://github.com/muyouzhi6/astrbot_plugin_life_scheduler)。
 
-本插件会在生成主动消息前尝试调用该插件的 `get_life_context()` 公共方法，读取今日穿搭与日程，并注入到模型的系统提示词中。未安装、未启用或暂时读取失败时会自动跳过，不影响主动消息主流程。
+本插件会在生成主动消息前尝试调用该插件的 `get_life_context()` 公共方法，读取今日穿搭与日程，并注入到模型的系统提示词中。注入日程时会优先解析并强调当前时间段对应或最近的日程项，避免模型只看到一整天的安排却忽略“此刻正在做什么”。未安装、未启用或暂时读取失败时会自动跳过，不影响主动消息主流程。
 
 相关配置位于 `friend_settings.life_scheduler_settings` 和 `group_settings.life_scheduler_settings`：
 

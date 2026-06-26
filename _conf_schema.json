@@ -121,7 +121,7 @@
                         "description": "包含今日日程",
                         "type": "bool",
                         "default": true,
-                        "hint": "开启后会把 Life Scheduler 返回的 schedule 注入给模型"
+                        "hint": "开启后会把 Life Scheduler 返回的 schedule 注入给模型，并优先强调当前时间段对应或最近的日程项"
                     },
                     "max_chars": {
                         "description": "最大注入长度",
@@ -421,7 +421,7 @@
                         "description": "包含今日日程",
                         "type": "bool",
                         "default": true,
-                        "hint": "开启后会把 Life Scheduler 返回的 schedule 注入给模型"
+                        "hint": "开启后会把 Life Scheduler 返回的 schedule 注入给模型，并优先强调当前时间段对应或最近的日程项"
                     },
                     "max_chars": {
                         "description": "最大注入长度",
