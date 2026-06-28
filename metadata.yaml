@@ -1,7 +1,7 @@
 name: "astrbot_plugin_flf_proactive_chat"
 display_name: "FLF Proactive Chat"
 author: "Florance"
-version: "v2.1.1"
+version: "v2.1.2"
 desc: "一个主动消息插件"
 repo: "https://github.com/FloranceYeh/astrbot_plugin_flf_proactive_chat"
 astrbot_version: ">=4.8.0"

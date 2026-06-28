@@ -38,9 +38,64 @@ class LlmMixin:
         r"(?:[:：](?P<minute>[0-5]?\d)|点(?:(?P<half>半)|(?P<minute_cn>[0-5]?\d)?分?))"
         r"\s*(?P<text>.+?)\s*$"
     )
+    LLM_REASONING_BLOCK_PATTERNS = (
+        re.compile(
+            r"(?is)<\|begin_of_thought\|>.*?"
+            r"(?:<\|end_of_thought\|>|\|end_of_thought\|)"
+            r"(?:\s*</begin_of_thought>)?"
+        ),
+        re.compile(r"(?is)<think\b[^>]*>.*?</think>"),
+        re.compile(r"(?is)<thinking\b[^>]*>.*?</thinking>"),
+        re.compile(r"(?is)<analysis\b[^>]*>.*?</analysis>"),
+        re.compile(r"(?is)<reasoning\b[^>]*>.*?</reasoning>"),
+    )
+    LLM_REASONING_START_MARKER_RE = re.compile(
+        r"(?is)^\s*(?:"
+        r"<\|begin_of_thought\|>|\|begin_of_thought\||<begin_of_thought>|"
+        r"<think\b[^>]*>|<thinking\b[^>]*>|<analysis\b[^>]*>|<reasoning\b[^>]*>"
+        r")"
+    )
+    LLM_REASONING_END_MARKER_RE = re.compile(
+        r"(?is)(?:"
+        r"<\|end_of_thought\|>|\|end_of_thought\||</begin_of_thought>|"
+        r"</think>|</thinking>|</analysis>|</reasoning>"
+        r")"
+    )
+    LLM_REASONING_MARKER_RE = re.compile(
+        r"(?is)(?:"
+        r"<\|/?(?:begin|end)_of_thought\|>|\|(?:begin|end)_of_thought\||"
+        r"</?begin_of_thought>|</?think\b[^>]*>|</?thinking\b[^>]*>|"
+        r"</?analysis\b[^>]*>|</?reasoning\b[^>]*>"
+        r")"
+    )
 
     context: Any
     timezone: Any
+
+    def _sanitize_llm_response_text(self, text: str) -> str:
+        """移除供应商泄漏到正文里的思考块，避免把推理过程发到平台。"""
+        if not text:
+            return ""
+
+        cleaned = text.strip()
+        if self.LLM_REASONING_START_MARKER_RE.match(
+            cleaned
+        ) and not self.LLM_REASONING_END_MARKER_RE.search(cleaned):
+            return ""
+
+        for pattern in self.LLM_REASONING_BLOCK_PATTERNS:
+            cleaned = pattern.sub("", cleaned)
+
+        last_end_marker: re.Match[str] | None = None
+        for match in self.LLM_REASONING_END_MARKER_RE.finditer(cleaned):
+            last_end_marker = match
+        if last_end_marker:
+            cleaned = cleaned[last_end_marker.end() :]
+
+        cleaned = self.LLM_REASONING_MARKER_RE.sub("", cleaned)
+        cleaned = re.sub(r"[ \t]+\n", "\n", cleaned)
+        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
+        return cleaned.strip()
 
     def _parse_bool_setting(self, value: Any, default: bool) -> bool:
         if isinstance(value, bool):
@@ -951,7 +1006,15 @@ class LlmMixin:
 
         # 仅在确实拿到 completion_text 时视为成功
         if llm_response_obj and llm_response_obj.completion_text:
-            response_text = llm_response_obj.completion_text.strip()
+            raw_response_text = llm_response_obj.completion_text.strip()
+            response_text = self._sanitize_llm_response_text(raw_response_text)
+            if raw_response_text and not response_text:
+                logger.warning(
+                    "[主动消息] LLM 返回内容在移除思考块后为空，已拦截本次发送。"
+                )
+                return None, final_user_simulation_prompt
+            if response_text != raw_response_text:
+                logger.warning("[主动消息] 检测到 LLM 输出包含思考块，已在发送前清理。")
             if response_text == "[object Object]":
                 logger.error(
                     "[主动消息] LLM 返回了意料之外的 '[object Object]' 字符串！"
