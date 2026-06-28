@@ -72,7 +72,16 @@ class SenderMixin:
             # 注意：这里的“切分”与“内容清理”是两件不同的事：
             # - split_words 负责决定在哪里断句；
             # - content_cleanup_rule 负责决定是否移除分段后的特定字符（如换行）。
-            split_words = settings.get("split_words", ["。", "？", "！", "~", "…"])
+            raw_split_words = settings.get("split_words", ["。", "？", "！", "~", "…"])
+            if isinstance(raw_split_words, str):
+                split_words = [raw_split_words]
+            else:
+                try:
+                    split_words = [
+                        str(word) for word in raw_split_words if str(word)
+                    ]
+                except TypeError:
+                    split_words = []
             if not split_words:
                 # 用户未提供分段词时退化为不分段，避免构造空正则导致行为不可预期。
                 return [text]
@@ -83,29 +92,17 @@ class SenderMixin:
             # 保留分隔符，避免语气符号在切分时丢失
             pattern = re.compile(f"(.*?({'|'.join(escaped_words)})|.+$)", re.DOTALL)
 
-            segments = pattern.findall(text)
             result: list[str] = []
-            for seg in segments:
-                if isinstance(seg, tuple):
-                    content = seg[0]
-                    if not isinstance(content, str):
-                        continue
-                    if content_cleanup_pattern:
-                        # 这里的 sub 属于“分段后清理”：
-                        # content 已经是单个分段，不会再影响其他分段边界。
-                        # 这样可避免把正则切分职责与内容删除职责耦合在一起。
-                        content = content_cleanup_pattern.sub("", content)
-                    if content.strip():
-                        # 清理后若只剩空白，则直接丢弃，避免发送空消息段。
-                        result.append(content)
-                elif seg:
-                    cleaned_seg = seg
-                    if content_cleanup_pattern:
-                        # 极少数情况下 findall 可能返回非 tuple 的字符串分段；
-                        # 这里保持同样的清理策略，确保两类返回值行为一致。
-                        cleaned_seg = content_cleanup_pattern.sub("", cleaned_seg)
-                    if cleaned_seg.strip():
-                        result.append(cleaned_seg)
+            for match in pattern.finditer(text):
+                content = match.group(0)
+                if content_cleanup_pattern:
+                    # 这里的 sub 属于“分段后清理”：
+                    # content 已经是单个分段，不会再影响其他分段边界。
+                    # 这样可避免把正则切分职责与内容删除职责耦合在一起。
+                    content = content_cleanup_pattern.sub("", content)
+                if content.strip():
+                    # 清理后若只剩空白，则直接丢弃，避免发送空消息段。
+                    result.append(content)
             return result if result else [text]
 
         # 正则分段模式
@@ -113,14 +110,20 @@ class SenderMixin:
         # 若需要删除换行、句号等字符，应通过 content_cleanup_rule 明确声明。
         regex_pattern = settings.get("regex", r".*?[。？！~…\n]+|.+$")
         try:
-            split_response = re.findall(regex_pattern, text, re.DOTALL | re.MULTILINE)
+            split_response = [
+                match.group(0)
+                for match in re.finditer(regex_pattern, text, re.DOTALL | re.MULTILINE)
+            ]
         except re.error:
             logger.error(
                 f"[主动消息] 分段回复正则表达式错误，使用默认分段方式: {traceback.format_exc()}"
             )
-            split_response = re.findall(
-                r".*?[。？！~…\n]+|.+$", text, re.DOTALL | re.MULTILINE
-            )
+            split_response = [
+                match.group(0)
+                for match in re.finditer(
+                    r".*?[。？！~…\n]+|.+$", text, re.DOTALL | re.MULTILINE
+                )
+            ]
 
         result: list[str] = []
         for seg in split_response:
@@ -140,7 +143,13 @@ class SenderMixin:
 
         # 对数间隔模式（模拟打字速度）
         if interval_method == "log":
-            log_base = float(settings.get("log_base", 1.8))
+            try:
+                log_base = float(settings.get("log_base", 1.8))
+                if not math.isfinite(log_base) or log_base <= 1:
+                    raise ValueError
+            except (TypeError, ValueError):
+                logger.warning("[主动消息] 对数间隔底数无效，使用默认值 1.8。")
+                log_base = 1.8
             if all(ord(c) < 128 for c in text):
                 word_count = len(text.split())
             else:
@@ -365,7 +374,7 @@ class SenderMixin:
         seg_conf = session_config.get("segmented_reply_settings", {})
 
         enable_seg = seg_conf.get("enable", False)
-        threshold = seg_conf.get("words_count_threshold", 150)
+        threshold = seg_conf.get("words_count_threshold", 80)
 
         # 注意：这里的 threshold 语义是“**不分段字数阈值**”，与字段名历史含义保持一致。
         # 也就是说：
